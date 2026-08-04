@@ -1,5 +1,9 @@
 const express = require('express');
 const app = express();
+//require - a node.js function used to import a pacakge 
+//node.js goes to node_modules, finds the cors package and loads it into the program
+const cors = require('cors');
+app.use(cors()); // Enable CORS for all routes
 
 //process.env.PORT checks if the environment (like a hosting service) has assigned a specific port to run on if not falls back to 5000
 const PORT = process.env.PORT || 5000;

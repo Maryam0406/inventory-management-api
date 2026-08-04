@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "cors": "^2.8.6",
     "express": "^5.2.1"
   },
   "devDependencies": {
@@ -10,9 +11,9 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-  "start": "node server.js",
-  "dev": "nodemon server.js"
-},
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Maryam0406/inventory-management-api.git"
