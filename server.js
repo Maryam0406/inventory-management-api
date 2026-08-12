@@ -39,20 +39,27 @@ app.get('/', (req, res) => {
     res.json({ message: 'Inventory Management API is running'});
 });
 
-app.get('/api/items/low-stock', (req, res) => {
-    const lowStockItems = items.filter((item) => item.quantity <= item.lowStockThreshold);
 
-    res.status(200).json({
-        count: lowStockItems.length,
-        items: lowStockItems,
-    });
+//get the low stock items from the database
+app.get('/api/items/low-stock', async (req, res) => {
+    try {
+        const lowStockItems = await db
+            .select()
+            .from(items)
+            .where(lte(items.quantity, items.lowStockThreshold));
+
+        res.status(200).json({
+            count: lowStockItems.length,
+            items: lowStockItems
+        });      
+    } catch (err) {
+        console.error('Error fetching low stock items: ', err);
+        res.status(500).json({ error: 'Failed to fetch low stock items' });
+    }
 });
 
-//get all items route
-app.get('/api/items', (req, res) => {
-    res.status(200).json(items);
-});
-//get all items form database
+
+//get all items from database
 app.get('/api/items', async (req, res) => {
     try {
         //Drizzle queries PostgreSQL and gives you a JavaScript array of objects:
@@ -66,15 +73,24 @@ app.get('/api/items', async (req, res) => {
     }
 });
 
-//get one item route
-app.get('/api/items/:id', (req, res) => {
-    const index = findItemIndex(req.params.id);
 
-    if (index === -1) {
-        return res.status(404).json({ error: 'Item not found'});
+//get one item from database
+app.get('./api/items/:id', async (req, res) => {
+    try {
+        const result = await db
+        .select()
+        .from(items)
+        .where(eq(items.id, Number(req.params.id)));
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Item not found'});
+        } 
+
+        res.status(200).json(result[0]);
+    } catch (err) {
+        console.error('Error fetching item: ', err);
+        res.status(500).json({ error: 'Failed to fetch item' });
     }
-
-    res.status(200).json(items[index]);
 });
 
 app.post('/api/items', (req, res) => {
