@@ -10,3 +10,7 @@ const pool = new Pool({
 
 const db = drizzle(pool);
 module.exports = { db };
+
+db.execute('SELECT 1')
+    .then(() => console.log('✅ Database connected successfully'))
+    .catch((err) => console.error('❌ Database connection failed:', err));

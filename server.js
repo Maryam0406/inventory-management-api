@@ -1,3 +1,7 @@
+const { db } = require('./db');
+const { items } = require('./db/schema');
+const { eq, lte } = require('drizzle-orm');
+
 const express = require('express');
 const app = express();
 //require - a node.js function used to import a pacakge 
@@ -47,6 +51,19 @@ app.get('/api/items/low-stock', (req, res) => {
 //get all items route
 app.get('/api/items', (req, res) => {
     res.status(200).json(items);
+});
+//get all items form database
+app.get('/api/items', async (req, res) => {
+    try {
+        //Drizzle queries PostgreSQL and gives you a JavaScript array of objects:
+        const allItems = await db.select().from(items);
+        //sending the received data to the frontend in json format
+        res.status(200).json(allItems);    
+    } catch (err) {
+        //500 - internal server error, something went wrong on the server side
+        console.error('Error fetching items: ', err);
+        res.status(500).json({error: 'Failed to fetch items'});
+    }
 });
 
 //get one item route
