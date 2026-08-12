@@ -15,22 +15,6 @@ const PORT = process.env.PORT || 5000;
 //parses incoming requests with JSON body into a javascript object cause express doesnt understand JSON
 app.use(express.json());
 
-//array of objects representing items in the inventory
-let items = [
-    { id: 1, name: 'Blue T-Shirt', sku: 'TS-BLU-001', category: 'Clothing', quantity: 40, price: 12.99, lowStockThreshold: 10},
-    { id: 2, name: 'Wireless Mouse', sku: 'EL-MOU-002', category: 'Electronics', quantity: 15, price: 19.99, lowStockThreshold: 5 },
-    { id: 3, name: 'Notebook', sku: 'ST-NOT-003', category: 'Stationery', quantity: 8, price: 2.5, lowStockThreshold: 10 },
-
-];
-
-let nextId = 4;
-
-function findItemIndex(id) {
-    //we convert the id to a number because the id in the items array is a number and the id from the request is a string
-    return items.findIndex((item) => item.id === Number(id));
-}
-
-
 //app is the express web server
 //'/' - the root url 
 //when a get request is recived run the below function
@@ -93,7 +77,7 @@ app.get('./api/items/:id', async (req, res) => {
     }
 });
 
-app.post('/api/items', (req, res) => {
+app.post('/api/items', async (req, res) => {
     const { name, sku, category, quantity, price, lowStockThreshold } = req.body;
 
     //Required field check
@@ -118,38 +102,38 @@ app.post('/api/items', (req, res) => {
     }
 
     //duplicate sku checks
-    const skuExists = items.some((item) => item.sku === sku);
-    if (skuExists) {
-        return res.status(400).json({
-            error: `An item with SKU "${sku}" already exists`,
-        });
-    }
+    try {
+        const existing = await db.select().from(items).where(eq(items.sku, sku));
 
-    //build and save the item
-    const newItem = {
-        id: nextId++,
-        name,
-        sku,
-        category: category || 'Uncategorized',
-        quantity,
-        price,
-        //Use the left value unless it is null or undefined.
-        lowStockThreshold: lowStockThreshold ?? 5,
-    };
+        if (existing.length > 0) {
+            return res.status(400).json({
+                error: `An item with SKU "${sku}" already exists`,
+            });
+        }
+        
+        //build and save the item
+        const newItemData = {
+            //postgresql will automatically generate the id for us, so we don't need to include it here
+            name,
+            sku,
+            quantity,
+            price: price.toString(),
+            //add category to the object only if category was provided
+            ... (category && { category }),
+            ...(lowStockThreshold !== undefined && { lowStockThreshold }),
+        };
 
-    items.push(newItem);
-    res.status(201).json(newItem);
-})
+        const inserted = await db.insert(items).values(newItemData).returning();
+        res.status(201).json(inserted[0]);
+    } catch (err) {
+        console.error('Error creating item: ', err);
+        res.status(500).json({ error: 'Failed to create item' });
+    }  
+});
 
 
 //put routes
-app.put('/api/items/:id', (req, res) => {
-    const index = findItemIndex(req.params.id);
-
-    if (index === -1) {
-        return res.status(404).json({ error: 'Item not found'});
-    }
-
+app.put('/api/items/:id', async (req, res) => {
     const { name, sku, category, quantity, price, lowStockThreshold } = req.body;
 
     if (quantity !== undefined && typeof quantity !== 'number') {
@@ -168,28 +152,43 @@ app.put('/api/items/:id', (req, res) => {
         return res.status(400).json({ error: 'price must be a non-negative number' });
     }
 
-    if (sku !== undefined && sku !== items[index].sku) {
-        const skuExists = items.some((item) => item.sku === sku);
-        if (skuExists) {
-            return res.status(400).json({
-                error: `An item with SKU "${sku}" already exists`,
-            });
+    try {
+        const existing = await db.select().from(items).where(eq(items.id, Number(req.params.id)));
+
+        if (existing.length === 0) {
+            return res.status(404).json({ error: 'Item not found'});
         }
-    }
 
-    // Merge: keep existing values, overwrite only the fields that were sent
-    items[index] = {
-        ...items[index],
-        ...(name !== undefined && { name }),
-        ...(sku !== undefined && { sku }),
-        ...(category !== undefined && { category }),
-        ...(quantity !== undefined && { quantity }),
-        ...(price !== undefined && { price }),
-        ...(lowStockThreshold !== undefined && { lowStockThreshold }),
-    };
+        if (sku !== undefined && sku !== existing[0].sku) {
+            const skuTaken = await db.select().from(items).where(eq(items.sku, sku));
+            if (skuTaken.length > 0) {
+                return res.status(400).json({
+                    error: `An item with SKU "${sku}" already exists`,
+                });
+            }
+        }
 
-    res.status(200).json(items[index]);
-    });
+        const updates = {
+            ...(name !== undefined && { name }),
+            ...(sku !== undefined && { sku }),
+            ...(category !== undefined && { category }),
+            ...(quantity !== undefined && { quantity }),
+            ...(price !== undefined && { price: price.toString() }),
+            ...(lowStockThreshold !== undefined && { lowStockThreshold }),
+        };
+
+        const updated = await db
+            .update(items)
+            .set(updates)
+            .where(eq(items.id, Number(req.params.id)))
+            .returning();
+
+        res.status(200).json(updated[0]);
+    } catch (err) {
+        console.error('Error updating item: ', err);
+        res.status(500).json({ error: 'Failed to update item' });
+    }        
+});
 
     //delete
     app.delete('/api/items/:id', (req, res) => {
