@@ -10,4 +10,12 @@ const items = pgTable('items', {
     lowStockThreshold: integer('low_stock_threshold').notNull().default(5),
 });
 
-module.exports = { items };
+const users = pgTable('users', {
+    id: serial('id').primaryKey(),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    password: varchar('password', { length: 255 }).notNull(),
+    role: varchar('role', { length: 50 }).notNull().default('staff'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+module.exports = { items, users };
