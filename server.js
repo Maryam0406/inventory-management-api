@@ -59,7 +59,7 @@ app.get('/api/items', async (req, res) => {
 
 
 //get one item from database
-app.get('./api/items/:id', async (req, res) => {
+app.get('/api/items/:id', async (req, res) => {
     try {
         const result = await db
         .select()
