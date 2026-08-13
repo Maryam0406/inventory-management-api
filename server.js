@@ -191,19 +191,26 @@ app.put('/api/items/:id', async (req, res) => {
 });
 
     //delete
-    app.delete('/api/items/:id', (req, res) => {
-        const index = findItemIndex(req.params.id);
+    app.delete('/api/items/:id', async (req, res) => {
+        try {
+            const deleted = await db
+            .delete(items)
+            .where(eq(items.id, Number(req.params.id)))
+            .returning();
 
-        if (index === -1) {
-            return res.status(404).json({ error: 'Item not found'});
+            if (deleted.length === 0) {
+                return res.status(404).json({ error: 'Item not found' });
+            }
+
+            res.status(200).json({
+                message: "Item deleted successfully",
+                item: deleted[0],
+            });
+            
+        } catch (err) {
+            console.error('Error deleting item: ', err);
+            res.status(500).json({ error: 'Failed to delete item' });
         }
-
-        const deletedItem = items.splice(index, 1)[0];
-
-        res.status(200).json({
-            message: 'Item deleted sucessfully',
-            item: deletedItem,
-        });
     });
 
     // Catch-all for routes that don't exist
