@@ -25,6 +25,8 @@ app.get('/', (req, res) => {
     res.json({ message: 'Inventory Management API is running'});
 });
 
+
+//signup route
 app.post('/api/auth/signup', async (req, res) => {
     const { email, password, role } = req.body;
 
@@ -74,6 +76,60 @@ app.post('/api/auth/signup', async (req, res) => {
         res.status(500).json({ error: 'Failed to create account'});
     }
 });
+
+
+//login route
+//route declaration
+app.post('/api/auth/login', async (req, res) => {
+    //getting the submitted credentials out of req body and assigning it to variables
+    const { email, password } = req.body;
+
+    //required field validation
+    if (!email || !password) {
+        return res.status(400).json({ error: 'email and password are required' });
+    }
+
+    try {
+        const result = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email));
+
+        if (result.length === 0) {
+            return res.status(400).json({ error: 'Invalid email or password' });
+        } 
+        
+        const user = result[0];
+
+        //verifying the pw
+        const passwordMatches = await bcrypt.compare(password, user.password);
+
+        //if password does not match send a 401 error
+        if (!passwordMatches) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        //sign - creates a JWT
+        const token = jwt.sign(
+            //information about the user that will be encoded in the token
+            { id: user.id, email: user.email, role: user.role },
+            //This is the secret key used to sign the token.
+            process.env.JWT_SECRET,
+            { expiresIn: '2h'}
+
+        );
+
+        res.status(200).json({
+            token,
+            user: { id: user.id, email: user.email, role: user.role }
+        });   
+    } catch (err) {
+        console.error('Error logging in: ', err);
+        res.status(500).json({ error: 'Failed to log in' });
+    }
+
+
+})
 
 
 //get the low stock items from the database
