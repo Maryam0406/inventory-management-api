@@ -1,4 +1,4 @@
-const { pgTable, serial, varchar, integer, numeric } = require('drizzle-orm/pg-core');
+const { pgTable, serial, varchar, integer, numeric, timestamp } = require('drizzle-orm/pg-core');
 
 const items = pgTable('items', {
     id: serial('id').primaryKey(),
