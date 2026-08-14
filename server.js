@@ -1,6 +1,8 @@
 const { db } = require('./db');
-const { items } = require('./db/schema');
+const { items, users } = require('./db/schema');
 const { eq, lte } = require('drizzle-orm');
+//authentication
+const bcrypt = require('bcrypt');
 
 const express = require('express');
 const app = express();
@@ -21,6 +23,56 @@ app.use(express.json());
 app.get('/', (req, res) => {
     //Sends a JSON response to the client.
     res.json({ message: 'Inventory Management API is running'});
+});
+
+app.post('/api/auth/signup', async (req, res) {
+    const { email, password, role } = req.body;
+
+    //if there is no email or password send a 400 error
+    if (!email || !password) {
+       // ({}) - parenthesis is used to call a function (json function)
+       //curly brackets is used to create an object with a key of error and a value of 'email and password are required'
+       return res.status(400).json({ error: 'email and password are required'});
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({ error: 'password must be at least 8 characters long' });
+    }
+
+    try {
+        const existing = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email));
+
+        if (existing.length > 0) {
+            return res.status(400).json({ error: 'An account with this email already exists' });
+        }  
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = {
+            email,
+            password: hashedPassword,
+            ...(role && { role }),
+        };
+
+        //the database operation takes some time to complete so we use await to wait for it to finish before moving on
+        const inserted = await db
+            .insert(users)
+            //use the values inside the newUser for the new row
+            .values(newUser)
+            .returning({
+                id: users.id,
+                email: users.email,
+                role: users.role,
+            });
+
+        res.status(201).json(inserted[0]);    
+    } catch (err) {
+        console.error('Error signing up: ', err);
+        res.status(500).json({ error: 'Failed to create account'});
+    }
 });
 
 
