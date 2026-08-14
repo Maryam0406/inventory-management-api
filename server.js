@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
     res.json({ message: 'Inventory Management API is running'});
 });
 
-app.post('/api/auth/signup', async (req, res) {
+app.post('/api/auth/signup', async (req, res) => {
     const { email, password, role } = req.body;
 
     //if there is no email or password send a 400 error
