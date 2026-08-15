@@ -127,9 +127,26 @@ app.post('/api/auth/login', async (req, res) => {
         console.error('Error logging in: ', err);
         res.status(500).json({ error: 'Failed to log in' });
     }
+});
 
 
-})
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    //if a token was not provided send a 401 error
+    if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).json({ error: 'Invalid or expired token' });
+        }
+        req.user = decoded;
+        next();
+    });
+}
 
 
 //get the low stock items from the database
