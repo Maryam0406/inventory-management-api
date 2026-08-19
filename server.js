@@ -27,6 +27,7 @@ app.get('/', (req, res) => {
 
 
 //signup route
+//creates the account and stores the hashed password in the database
 app.post('/api/auth/signup', async (req, res) => {
     const { email, password, role } = req.body;
 
@@ -79,9 +80,10 @@ app.post('/api/auth/signup', async (req, res) => {
 
 
 //login route
+//checks the credentials and password when someone logs in, creates a jwt and sends it to the frontend
 //route declaration
 app.post('/api/auth/login', async (req, res) => {
-    //getting the submitted credentials out of req body and assigning it to variables
+    //getting the submitted credentials out of req body and assigning it to each variable
     const { email, password } = req.body;
 
     //required field validation
@@ -95,10 +97,12 @@ app.post('/api/auth/login', async (req, res) => {
             .from(users)
             .where(eq(users.email, email));
 
+            //database queries always returns arrays regardless of whether it finds a match or not, so we check the length of the array to see if a user was found
         if (result.length === 0) {
             return res.status(400).json({ error: 'Invalid email or password' });
         } 
         
+        //gets the first user object
         const user = result[0];
 
         //verifying the pw
@@ -111,7 +115,7 @@ app.post('/api/auth/login', async (req, res) => {
 
         //sign - creates a JWT
         const token = jwt.sign(
-            //information about the user that will be encoded in the token
+            //information about the user that will be encoded(stored) in the token
             { id: user.id, email: user.email, role: user.role },
             //This is the secret key used to sign the token.
             process.env.JWT_SECRET,
@@ -129,9 +133,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-
+//Checks that JWT whenever the user tries to access something protected.
 function authenticateToken(req, res, next) {
     const authHeader = req.headers.authorization;
+    //getting only the token
     const token = authHeader && authHeader.split(' ')[1];
 
     //if a token was not provided send a 401 error
@@ -139,6 +144,7 @@ function authenticateToken(req, res, next) {
         return res.status(401).json({ error: 'No token provided' });
     }
 
+    //checking whether the jwt is valid
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid or expired token' });
