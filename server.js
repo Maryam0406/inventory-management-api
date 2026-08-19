@@ -3,6 +3,7 @@ const { items, users } = require('./db/schema');
 const { eq, lte } = require('drizzle-orm');
 //authentication
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const express = require('express');
 const app = express();
