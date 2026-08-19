@@ -208,7 +208,7 @@ app.get('/api/items/:id', async (req, res) => {
     }
 });
 
-app.post('/api/items', async (req, res) => {
+app.post('/api/items', authenticateToken, async (req, res) => {
     const { name, sku, category, quantity, price, lowStockThreshold } = req.body;
 
     //Required field check
@@ -264,7 +264,7 @@ app.post('/api/items', async (req, res) => {
 
 
 //put routes
-app.put('/api/items/:id', async (req, res) => {
+app.put('/api/items/:id', authenticateToken, async (req, res) => {
     const { name, sku, category, quantity, price, lowStockThreshold } = req.body;
 
     if (quantity !== undefined && typeof quantity !== 'number') {
@@ -322,7 +322,11 @@ app.put('/api/items/:id', async (req, res) => {
 });
 
     //delete
-    app.delete('/api/items/:id', async (req, res) => {
+    app.delete('/api/items/:id', authenticateToken, async (req, res) => {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can delete items' });
+        }
+        
         try {
             const deleted = await db
             .delete(items)
